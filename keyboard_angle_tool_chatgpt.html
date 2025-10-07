@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Keyboard Angle — Local Tool</title>
+  <style>
+    :root{--desk:#e9dcbe;--desk-border:#d1c2a6;--card:#ffffff;--accent:#1f6feb}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#f7f7f8, #f0f0f2);color:#222}
+    .app{max-width:1100px;margin:28px auto;padding:20px}
+    h1{margin:0 0 8px;font-size:20px}
+    p.lead{margin:0 0 18px;color:#444}
+
+    .stage-wrap{display:flex;gap:18px}
+    .desk{
+      width:760px;height:460px;border-radius:8px;background:linear-gradient(180deg,var(--desk),#efe6c9);border:6px solid var(--desk-border);position:relative;overflow:hidden;box-shadow:0 6px 24px rgba(20,20,20,0.08)
+    }
+
+    /* The top-down simplified components */
+    .item{position:absolute;touch-action:none;user-select:none;transform-origin:center center;display:flex;align-items:center;justify-content:center}
+    .keyboard{width:420px;height:120px;background:linear-gradient(#1b1e22,#111216);border-radius:10px;padding:8px;box-sizing:border-box}
+    .keyboard .keys{display:grid;grid-template-columns:repeat(20,1fr);gap:6px}
+    .key{height:8px;border-radius:2px;background:linear-gradient(#f8f9fa,#dfe6ea);opacity:0.9}
+
+    .mousepad{width:160px;height:120px;background:linear-gradient(180deg,#3b3b3b,#1f1f1f);border-radius:6px}
+    .mouse{width:46px;height:74px;background:linear-gradient(180deg,#f7f7f7,#d8d8d8);border-radius:22px}
+
+    /* visual chrome and handles */
+    .item .label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);font-size:12px;background:#fff;padding:4px 8px;border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,0.06)}
+    .rotate-handle{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);right:-10px;top:-10px;box-shadow:0 4px 10px rgba(31,111,235,0.2);cursor:grab}
+    .rotate-handle:active{cursor:grabbing}
+    .grab-area{position:absolute;inset:0;border-radius:inherit}
+
+    .controls{width:320px}
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(20,20,20,0.06)}
+    .control-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .small{font-size:12px;color:#555}
+    .stat{font-weight:600}
+
+    button{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.secondary{background:#eee;color:#111}
+
+    .footer{margin-top:12px;font-size:13px;color:#444}
+    pre{background:#0f1724;color:#e6eef8;padding:12px;border-radius:8px;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>How far do you angle your keyboard?</h1>
+    <p class="lead">Drag and rotate the keyboard, mousepad, and mouse to match your setup. Angle measured relative to desk horizontal (0° = perfectly horizontal).</p>
+
+    <div class="stage-wrap">
+      <div class="desk" id="desk">
+        <!-- keyboard -->
+        <div class="item keyboard" id="keyboard" style="left:120px;top:200px;transform:translate(-50%,-50%) rotate(0deg);">
+          <div class="label">Keyboard <span id="kbd-angle">0°</span></div>
+          <div class="grab-area" data-drag></div>
+          <div class="rotate-handle" data-rotate title="Rotate"></div>
+          <div class="keyboard-inner" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+            <div class="keys" style="width:92%;height:64%;">
+              <!-- keys grid: 20 columns x 4 rows (visual only) -->
+              <div class="key" style="grid-column:span 4"></div>
+              <!-- fill in many small keys visually -->
+              <!-- we'll generate keys with JS to keep HTML short -->
+            </div>
+          </div>
+        </div>
+
+        <!-- mousepad -->
+        <div class="item mousepad" id="mousepad" style="left:560px;top:260px;transform:translate(-50%,-50%) rotate(8deg);">
+          <div class="label">Mousepad <span id="pad-angle">8°</span></div>
+          <div class="grab-area" data-drag></div>
+          <div class="rotate-handle" data-rotate></div>
+        </div>
+
+        <!-- mouse -->
+        <div class="item mouse" id="mouse" style="left:640px;top:210px;transform:translate(-50%,-50%) rotate(-15deg);">
+          <div class="label">Mouse <span id="mouse-angle">-15°</span></div>
+          <div class="grab-area" data-drag></div>
+          <div class="rotate-handle" data-rotate></div>
+        </div>
+
+      </div>
+
+      <div class="controls">
+        <div class="card">
+          <div class="control-row"><div class="small">Selected</div><div class="stat" id="selected-name">—</div></div>
+          <div class="control-row"><div class="small">Position</div><div class="stat" id="pos">x: — , y: —</div></div>
+          <div class="control-row"><div class="small">Angle</div><div class="stat" id="angle">—°</div></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="export">Export JSON</button>
+            <button class="secondary" id="reset">Reset</button>
+          </div>
+          <div class="footer">Tip: drag the element to move. Drag the small blue dot to rotate. The keyboard angle is shown on the keyboard label and in the controls.</div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div class="card" style="margin-top:12px">
+          <div class="small" style="margin-bottom:8px">Collected sample (click Export to save)</div>
+          <pre id="output">[]</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Helper utils
+    function getTransformInfo(el){
+      const st = getComputedStyle(el);
+      const tr = st.transform === 'none' ? null : st.transform;
+      let translate = {x:0,y:0}, angle = 0;
+      if(tr){
+        const values = tr.match(/matrix\((.+)\)/)[1].split(',').map(Number);
+        // matrix(a, b, c, d, tx, ty)
+        const [a,b,c,d,tx,ty] = values;
+        angle = Math.round(Math.atan2(b,a)*(180/Math.PI));
+        translate = {x:tx,y:ty};
+      }
+      return {translate, angle};
+    }
+
+    // Make keys inside keyboard
+    const keysContainer = document.querySelector('.keyboard .keys');
+    // Clear and generate 20x3-ish layout visually
+    keysContainer.innerHTML = '';
+    for(let r=0;r<3;r++){
+      for(let c=0;c<20;c++){
+        const d = document.createElement('div'); d.className='key';
+        // vary width for visual effect
+        if(r===0 && (c===0||c===19)) d.style.gridColumn='span 2';
+        keysContainer.appendChild(d);
+      }
+    }
+
+    // Drag and rotate implementation
+    const desk = document.getElementById('desk');
+    const items = Array.from(document.querySelectorAll('.item'));
+    let active = null;
+    let mode = null; // 'drag' or 'rotate'
+    let pointerId = null;
+    let start = {};
+
+    function toLocalDeskPoint(clientX, clientY){
+      const r = desk.getBoundingClientRect();
+      return {x: clientX - r.left, y: clientY - r.top};
+    }
+
+    items.forEach(item => {
+      const dragArea = item.querySelector('[data-drag]');
+      const rotHandle = item.querySelector('[data-rotate]');
+
+      // initialize data attributes if absent
+      if(!item.dataset.x) item.dataset.x = parseFloat(item.style.left) || 0;
+      if(!item.dataset.y) item.dataset.y = parseFloat(item.style.top) || 0;
+      if(!item.dataset.angle){
+        // parse initial rotate from inline style
+        const m = item.style.transform.match(/rotate\((-?\d+)deg\)/);
+        item.dataset.angle = m ? Number(m[1]) : 0;
+      }
+
+      // Apply transform function from stored dataset
+      function applyTransform(){
+        const x = item.dataset.x; const y = item.dataset.y; const a = item.dataset.angle;
+        item.style.left = x + 'px'; item.style.top = y + 'px';
+        // Use translate(-50%,-50%) to keep centre anchored visually
+        item.style.transform = `translate(-50%,-50%) rotate(${a}deg)`;
+        // Update labels if present
+        const lbl = item.querySelector('.label');
+        if(lbl){
+          if(item.id==='keyboard') document.getElementById('kbd-angle').textContent = Math.round(Number(a)) + '°';
+          if(item.id==='mouse') document.getElementById('mouse-angle').textContent = Math.round(Number(a)) + '°';
+          if(item.id==='mousepad') document.getElementById('pad-angle').textContent = Math.round(Number(a)) + '°';
+        }
+      }
+      applyTransform();
+
+      // Dragging
+      dragArea.addEventListener('pointerdown', e => {
+        e.preventDefault(); item.setPointerCapture(e.pointerId);
+        active = item; mode = 'drag'; pointerId = e.pointerId;
+        const p = toLocalDeskPoint(e.clientX, e.clientY);
+        start.offsetX = p.x - parseFloat(item.dataset.x);
+        start.offsetY = p.y - parseFloat(item.dataset.y);
+        updateSelection(item);
+      });
+
+      // Rotation
+      rotHandle.addEventListener('pointerdown', e => {
+        e.preventDefault(); item.setPointerCapture(e.pointerId);
+        active = item; mode = 'rotate'; pointerId = e.pointerId;
+        const rect = item.getBoundingClientRect();
+        const center = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
+        start.center = center;
+        start.startAngle = Number(item.dataset.angle) || 0;
+        updateSelection(item);
+      });
+
+    });
+
+    // capture pointermove on desk
+    desk.addEventListener('pointermove', e => {
+      if(!active || e.pointerId !== pointerId) return;
+      if(mode==='drag'){
+        const p = toLocalDeskPoint(e.clientX, e.clientY);
+        const newX = p.x - start.offsetX; const newY = p.y - start.offsetY;
+        // clamp inside desk bounds (with margins)
+        const r = desk.getBoundingClientRect();
+        const w = active.offsetWidth; const h = active.offsetHeight;
+        const minX = 0 + w*0.1; const maxX = r.width - w*0.1;
+        const minY = 0 + h*0.1; const maxY = r.height - h*0.1;
+        active.dataset.x = Math.max(minX, Math.min(maxX, newX));
+        active.dataset.y = Math.max(minY, Math.min(maxY, newY));
+        applyActiveTransform();
+      } else if(mode==='rotate'){
+        const c = start.center;
+        const dx = e.clientX - c.x, dy = e.clientY - c.y;
+        let ang = Math.atan2(dy, dx) * 180/Math.PI; // angle relative to +X axis
+        // Convert to degrees where 0 is horizontal to the right; keep existing start offset
+        // We want rotation such that 0deg aligns keyboard long edge with horizontal.
+        // startAngle is initial rotation; compute delta
+        const delta = ang - start.initialCursorAngle || 0;
+        // Simpler: compute absolute angle relative to horizontal
+        const absolute = ang;
+        // Normalize to -180..180
+        let norm = ((absolute+180)%360) - 180;
+        active.dataset.angle = Math.round(norm + 0); // no offset
+        applyActiveTransform();
+      }
+    });
+
+    // pointerup anywhere
+    desk.addEventListener('pointerup', e => {
+      if(active && e.pointerId===pointerId){
+        // release capture
+        try{active.releasePointerCapture(pointerId);}catch{}
+        active = null; mode = null; pointerId = null; start = {};
+        refreshOutput();
+      }
+    });
+
+    // Helper to apply transform of currently active (or given) element
+    function applyActiveTransform(){
+      if(!active) return;
+      const x = active.dataset.x; const y = active.dataset.y; const a = active.dataset.angle;
+      active.style.left = x + 'px'; active.style.top = y + 'px';
+      active.style.transform = `translate(-50%,-50%) rotate(${a}deg)`;
+      // update control panel
+      document.getElementById('selected-name').textContent = active.id;
+      document.getElementById('pos').textContent = `x: ${Math.round(x)}, y: ${Math.round(y)}`;
+      document.getElementById('angle').textContent = Math.round(a) + '°';
+      // update labels
+      const lbl = active.querySelector('.label');
+      if(lbl){
+        if(active.id==='keyboard') document.getElementById('kbd-angle').textContent = Math.round(Number(a)) + '°';
+        if(active.id==='mouse') document.getElementById('mouse-angle').textContent = Math.round(Number(a)) + '°';
+        if(active.id==='mousepad') document.getElementById('pad-angle').textContent = Math.round(Number(a)) + '°';
+      }
+    }
+
+    // Select none at start
+    function updateSelection(el){
+      items.forEach(i=>i.style.zIndex='1');
+      el.style.zIndex='10';
+      active = el; applyActiveTransform();
+    }
+
+    // Simple click selection when clicking an item
+    items.forEach(it => {
+      it.addEventListener('click', e => { e.stopPropagation(); updateSelection(it); });
+    });
+    desk.addEventListener('click', ()=>{ document.getElementById('selected-name').textContent='—'; document.getElementById('pos').textContent='x: — , y: —'; document.getElementById('angle').textContent='—°'; });
+
+    // Export
+    function refreshOutput(){
+      const data = items.map(i => ({id:i.id, x:Math.round(Number(i.dataset.x)), y:Math.round(Number(i.dataset.y)), angle:Math.round(Number(i.dataset.angle))}));
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+    document.getElementById('export').addEventListener('click', ()=>{
+      refreshOutput();
+      const text = document.getElementById('output').textContent;
+      const blob = new Blob([text], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'keyboard-angle-sample.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('reset').addEventListener('click', ()=>{
+      // reset to initial presets
+      document.getElementById('keyboard').dataset.x = 120; document.getElementById('keyboard').dataset.y = 200; document.getElementById('keyboard').dataset.angle = 0;
+      document.getElementById('mousepad').dataset.x = 560; document.getElementById('mousepad').dataset.y = 260; document.getElementById('mousepad').dataset.angle = 8;
+      document.getElementById('mouse').dataset.x = 640; document.getElementById('mouse').dataset.y = 210; document.getElementById('mouse').dataset.angle = -15;
+      items.forEach(it=>{ it.style.zIndex='1'; it.style.transform='translate(-50%,-50%)'; });
+      refreshOutput();
+    });
+
+    // initial output
+    refreshOutput();
+
+    // Accessibility: keyboard controls to nudge selected item
+    window.addEventListener('keydown', e=>{
+      const selName = document.getElementById('selected-name').textContent;
+      if(selName==='—') return;
+      const el = document.getElementById(selName);
+      if(!el) return;
+      const step = e.shiftKey?10:2;
+      if(e.key==='ArrowLeft'){ el.dataset.x = Number(el.dataset.x) - step; applyActiveTransform(); refreshOutput(); }
+      if(e.key==='ArrowRight'){ el.dataset.x = Number(el.dataset.x) + step; applyActiveTransform(); refreshOutput(); }
+      if(e.key==='ArrowUp'){ el.dataset.y = Number(el.dataset.y) - step; applyActiveTransform(); refreshOutput(); }
+      if(e.key==='ArrowDown'){ el.dataset.y = Number(el.dataset.y) + step; applyActiveTransform(); refreshOutput(); }
+      if(e.key==='r'){ el.dataset.angle = Number(el.dataset.angle) + (e.shiftKey?10:1); applyActiveTransform(); refreshOutput(); }
+      if(e.key==='R'){ el.dataset.angle = Number(el.dataset.angle) - (e.shiftKey?10:1); applyActiveTransform(); refreshOutput(); }
+    });
+
+    // Make sure transforms stay applied when window resizes
+    window.addEventListener('resize', ()=>{ items.forEach(i=>{ applyActiveTransform(); }); });
+
+  </script>
+</body>
+</html>
